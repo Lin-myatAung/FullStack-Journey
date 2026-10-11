@@ -1,8 +1,19 @@
 const taskInput = document.getElementById("taskInput");
 const taskList = document.getElementById("tasks");
 
-let todos = JSON.parse(localStorage.getItem("myTodos")) || [];
-renderTasks();
+let todos = [];
+
+async function fetchTodos() {
+    try {
+        const response = await fetch("http://localhost:3000/api/todos");
+        todos = await response.json();
+        renderTasks();
+    } catch(error) {
+        console.error("Failed to load todos from server: ", error);
+    }
+}
+
+fetchTodos();
 
 function renderTasks() {
     taskList.innerHTML = "";
@@ -20,7 +31,7 @@ function renderTasks() {
         deleteBtn.addEventListener("click", function(e) {
             e.stopPropagation();
             todos.splice(index, 1);
-            saveAndRender();
+            renderTasks();
         });
 
         li.addEventListener("click", function() {
@@ -37,20 +48,32 @@ function renderTasks() {
     }); 
 }
 
-function saveAndRender() {
-    localStorage.setItem("myTodos", JSON.stringify(todos));
-    renderTasks();
-}
-
-function getTask() {
+async function getTask() {
     const userInput = taskInput.value.trim();
     if(!userInput) {
         return;
     }
 
-    todos.push(userInput);
-    saveAndRender();
+    try {
+        const response = await fetch("http://localhost:3000/api/todos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({task: userInput})
+        });
+
+        const data = await response.json();
+        if(data.success) {
+            todos = data.todos;
+            renderTasks();
+        }
+    } catch(error) {
+        console.error("Failed to save tasks to server: ", error);
+    }
+
     taskInput.value = "";
+    taskInput.focus();
 }
 
 document.addEventListener("keydown", function(e) {
